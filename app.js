@@ -1,5 +1,4 @@
 import express from "express";
-import { getDb } from "./src/db/connect.js";
 
 const app = express();
 app.use(express.json());
