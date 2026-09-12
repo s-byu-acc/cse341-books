@@ -1,7 +1,5 @@
 import express from "express";
 
-import { getBooksHandler, getBookByIdHandler } from "./controllers/books.js";
-
 import {
   getAllAuthors,
   getAuthorById,
@@ -10,18 +8,27 @@ import {
   deleteAuthor,
 } from './controllers/authors.js';
 
+import {
+  getAllBooks,
+  getBookById,
+  createBook,
+  updateBook,
+  deleteBook,
+} from './controllers/books.js';
+
 const router = express.Router();
 
 /**
  * @openapi
  * /books:
  *   get:
+ *     summary: Get all books
+ *     description: Returns all books.
  *     tags:
  *       - Books
- *     summary: Get all books
  *     responses:
  *       200:
- *         description: A list of books
+ *         description: A list of book objects.
  *         content:
  *           application/json:
  *             schema:
@@ -31,15 +38,18 @@ const router = express.Router();
  *                 properties:
  *                   id:
  *                     type: string
- *                     example: "1"
+ *                     example: b1
+ *                   authorId:
+ *                     type: string
+ *                     example: a1
  *                   title:
  *                     type: string
- *                     example: "The Great Gatsby"
- *                   author:
+ *                     example: Pride and Prejudice
+ *                   publicationDate:
  *                     type: string
- *                     example: "F. Scott Fitzgerald"
+ *                     example: 1813-01-28
  *       500:
- *         description: Internal server error
+ *         description: An unexpected server or database error.
  *         content:
  *           application/json:
  *             schema:
@@ -47,28 +57,29 @@ const router = express.Router();
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Internal server error
+ *                   example: Unable to retrieve books.
  */
-router.get("/books", getBooksHandler);
+router.get('/books', getAllBooks);
 
 /**
  * @openapi
  * /books/{id}:
  *   get:
+ *     summary: Get a book by id
+ *     description: Returns one book by its custom id.
  *     tags:
  *       - Books
- *     summary: Get a book by ID
  *     parameters:
- *       - name: id
- *         in: path
+ *       - in: path
+ *         name: id
  *         required: true
- *         description: The ID of the book
+ *         description: The custom id of the book.
  *         schema:
  *           type: string
- *         example: "1"
+ *         example: b1
  *     responses:
  *       200:
- *         description: Book found
+ *         description: The matching book object.
  *         content:
  *           application/json:
  *             schema:
@@ -76,15 +87,18 @@ router.get("/books", getBooksHandler);
  *               properties:
  *                 id:
  *                   type: string
- *                   example: "1"
+ *                   example: b1
+ *                 authorId:
+ *                   type: string
+ *                   example: a1
  *                 title:
  *                   type: string
- *                   example: "The Great Gatsby"
- *                 author:
+ *                   example: Pride and Prejudice
+ *                 publicationDate:
  *                   type: string
- *                   example: "F. Scott Fitzgerald"
+ *                   example: 1813-01-28
  *       404:
- *         description: Book not found
+ *         description: No book exists with the specified id.
  *         content:
  *           application/json:
  *             schema:
@@ -92,9 +106,9 @@ router.get("/books", getBooksHandler);
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Book not found
+ *                   example: Book not found.
  *       500:
- *         description: Internal server error
+ *         description: An unexpected server or database error.
  *         content:
  *           application/json:
  *             schema:
@@ -102,9 +116,226 @@ router.get("/books", getBooksHandler);
  *               properties:
  *                 message:
  *                   type: string
- *                   example: Internal server error
+ *                   example: Unable to retrieve book.
  */
-router.get("/books/:id", getBookByIdHandler);
+router.get('/books/:id', getBookById);
+
+/**
+ * @openapi
+ * /books:
+ *   post:
+ *     summary: Create a book
+ *     description: Creates a new book associated with an existing author.
+ *     tags:
+ *       - Books
+ *     requestBody:
+ *       required: true
+ *       description: The book to create.
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - id
+ *               - authorId
+ *               - title
+ *               - publicationDate
+ *             properties:
+ *               id:
+ *                 type: string
+ *                 example: b4
+ *               authorId:
+ *                 type: string
+ *                 example: a1
+ *               title:
+ *                 type: string
+ *                 example: Example Book Title
+ *               publicationDate:
+ *                 type: string
+ *                 example: 2026-01-15
+ *           example:
+ *             id: b4
+ *             authorId: a1
+ *             title: Example Book Title
+ *             publicationDate: 2026-01-15
+ *     responses:
+ *       201:
+ *         description: The newly created book object.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                   example: b4
+ *                 authorId:
+ *                   type: string
+ *                   example: a1
+ *                 title:
+ *                   type: string
+ *                   example: Example Book Title
+ *                 publicationDate:
+ *                   type: string
+ *                   example: 2026-01-15
+ *       400:
+ *         description: A required field is missing, the id already exists, or the authorId is invalid.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: The specified authorId does not match an existing author.
+ *       500:
+ *         description: An unexpected server or database error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Unable to create book.
+ */
+router.post('/books', createBook);
+
+/**
+ * @openapi
+ * /books/{id}:
+ *   put:
+ *     summary: Update a book
+ *     description: Updates an existing book and associates it with an existing author.
+ *     tags:
+ *       - Books
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: The custom id of the book to update.
+ *         schema:
+ *           type: string
+ *         example: b1
+ *     requestBody:
+ *       required: true
+ *       description: The book fields to update.
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - authorId
+ *               - title
+ *               - publicationDate
+ *             properties:
+ *               authorId:
+ *                 type: string
+ *                 example: a2
+ *               title:
+ *                 type: string
+ *                 example: Updated Book Title
+ *               publicationDate:
+ *                 type: string
+ *                 example: 2026-02-20
+ *           example:
+ *             authorId: a2
+ *             title: Updated Book Title
+ *             publicationDate: 2026-02-20
+ *     responses:
+ *       200:
+ *         description: The updated book object.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                   example: b1
+ *                 authorId:
+ *                   type: string
+ *                   example: a2
+ *                 title:
+ *                   type: string
+ *                   example: Updated Book Title
+ *                 publicationDate:
+ *                   type: string
+ *                   example: 2026-02-20
+ *       400:
+ *         description: A required field is missing or the authorId is invalid.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: The specified authorId does not match an existing author.
+ *       404:
+ *         description: No book exists with the specified id.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Book not found.
+ *       500:
+ *         description: An unexpected server or database error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Unable to update book.
+ */
+router.put('/books/:id', updateBook);
+
+/**
+ * @openapi
+ * /books/{id}:
+ *   delete:
+ *     summary: Delete a book
+ *     description: Deletes an existing book by its custom id.
+ *     tags:
+ *       - Books
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: The custom id of the book to delete.
+ *         schema:
+ *           type: string
+ *         example: b1
+ *     responses:
+ *       204:
+ *         description: Book deleted successfully. The response has no body.
+ *       404:
+ *         description: No book exists with the specified id.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Book not found.
+ *       500:
+ *         description: An unexpected server or database error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: Unable to delete book.
+ */
+router.delete('/books/:id', deleteBook);
 
 /**
  * @openapi
